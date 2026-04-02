@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Spotify → NewPipe</title>
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#1fdf64"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="SpotifyNP"/>
+<link rel="apple-touch-icon" href="/icons/icon-192.png"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#080b0f;--bg2:#0d1117;--surface:#111820;--surface2:#161e28;
+  --border:#1e2a38;--border2:#243040;
+  --green:#1fdf64;--green-dim:#0f6b31;--green-bg:#061a0e;
+  --blue:#4c9cf8;--blue-bg:#061429;
+  --yellow:#f5c542;--yellow-bg:#1a1400;
+  --red:#f25a5a;--red-bg:#1a0808;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#475569;
+  --radius:10px;--radius-sm:6px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 1rem 5rem}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0}
+
+header{width:100%;max-width:680px;padding:2.5rem 0 1.5rem;position:relative;z-index:1}
+.logo-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.4rem}
+.logo-icon{width:38px;height:38px;background:var(--green);border-radius:8px;display:grid;place-items:center;font-size:1.1rem;flex-shrink:0}
+.logo-text{font-size:clamp(1.3rem,4vw,1.7rem);font-weight:700;letter-spacing:-.03em;line-height:1}
+.logo-text .arr{color:var(--text3);margin:0 .3rem;font-weight:300}
+.tagline{font-size:.82rem;color:var(--text3);margin-left:50px}
+.pill{display:inline-flex;align-items:center;gap:.3rem;background:var(--green-bg);border:1px solid var(--green-dim);color:var(--green);font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:.2rem .6rem;border-radius:99px;margin-left:50px;margin-top:.5rem}
+
+/* nav tabs */
+.tabs{display:flex;gap:.5rem;width:100%;max-width:680px;margin-bottom:.75rem;position:relative;z-index:1}
+.tab{padding:.55rem 1rem;font-size:.8rem;font-weight:600;border-radius:var(--radius-sm);cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--text3);transition:all .18s;display:flex;align-items:center;gap:.4rem}
+.tab:hover{border-color:var(--border2);color:var(--text2)}
+.tab.active{border-color:var(--green);color:var(--green);background:var(--green-bg)}
+
+/* pages */
+.page{display:none;width:100%;max-width:680px;position:relative;z-index:1}
+.page.active{display:block}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.4rem;margin-bottom:.75rem}
+.section-label{font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:.85rem;display:flex;align-items:center;gap:.5rem}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* guide */
+.guide{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:.75rem;overflow:hidden}
+.guide-header{display:flex;align-items:center;justify-content:space-between;padding:.85rem 1.2rem;cursor:pointer;user-select:none}
+.guide-title{font-size:.78rem;font-weight:600;color:var(--text2);letter-spacing:.04em}
+.guide-toggle{font-size:.7rem;color:var(--text3);transition:transform .2s}
+.guide.open .guide-toggle{transform:rotate(180deg)}
+.guide-body{display:none;padding:0 1.2rem 1.2rem}
+.guide.open .guide-body{display:block}
+.guide-steps{display:flex;flex-direction:column;gap:.5rem}
+.guide-step{display:flex;align-items:flex-start;gap:.75rem;padding:.7rem .85rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.guide-step-num{flex-shrink:0;width:1.4em;height:1.4em;background:var(--green);color:#000;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.7rem;border-radius:50%;display:grid;place-items:center;margin-top:.05em}
+.guide-step-text{font-size:.8rem;color:var(--text2);line-height:1.5}
+.guide-step-text strong{color:var(--text);font-weight:600}
+
+/* mode */
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:0}
+.mode-card{background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:1rem;cursor:pointer;transition:border-color .18s,background .18s;position:relative;overflow:hidden}
+.mode-card:hover{border-color:var(--border2)}
+.mode-card.active{border-color:var(--green);background:var(--green-bg)}
+.mode-card.active::after{content:'✓';position:absolute;top:.5rem;right:.6rem;font-size:.7rem;color:var(--green);font-weight:700}
+.mode-emoji{font-size:1.4rem;margin-bottom:.4rem;display:block}
+.mode-name{font-size:.82rem;font-weight:600;color:var(--text);margin-bottom:.2rem}
+.mode-desc{font-size:.7rem;color:var(--text3);line-height:1.4}
+.mode-card.active .mode-desc{color:var(--text2)}
+
+/* upload */
+#merge-section{display:none;margin-top:1rem}
+.upload-zone{border:1.5px dashed var(--border2);border-radius:var(--radius-sm);padding:1.4rem;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--bg2)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--green);background:var(--green-bg)}
+.upload-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-zone-icon{font-size:1.6rem;margin-bottom:.4rem}
+.upload-zone-text{font-size:.78rem;color:var(--text3)}
+.upload-zone-text strong{color:var(--text2)}
+.upload-result{margin-top:.6rem;font-size:.75rem;padding:.5rem .75rem;border-radius:var(--radius-sm);display:none;font-family:'JetBrains Mono',monospace}
+.upload-result.ok{background:var(--green-bg);border:1px solid var(--green-dim);color:var(--green);display:block}
+.upload-result.err{background:var(--red-bg);border:1px solid var(--red);color:var(--red);display:block}
+.upload-hint{margin-top:.6rem;font-size:.72rem;color:var(--text3);display:flex;align-items:flex-start;gap:.4rem}
+
+/* playlist inputs */
+.playlist-inputs{display:flex;flex-direction:column;gap:.5rem;margin-bottom:.75rem}
+.playlist-row{display:flex;gap:.5rem;align-items:center}
+.playlist-row input{flex:1}
+.btn-remove-row{background:transparent;border:1px solid var(--border);color:var(--text3);width:30px;height:38px;border-radius:var(--radius-sm);font-size:.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;cursor:pointer}
+.btn-remove-row:hover{border-color:var(--red);color:var(--red)}
+.btn-add-url{background:transparent;border:1.5px dashed var(--border2);color:var(--text3);padding:.6rem 1rem;font-size:.78rem;border-radius:var(--radius-sm);width:100%;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .18s}
+.btn-add-url:hover{border-color:var(--green);color:var(--green)}
+
+input[type="text"]{width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.82rem;padding:.65rem .85rem;outline:none;transition:border-color .18s}
+input[type="text"]:focus{border-color:var(--green)}
+input[type="text"]::placeholder{color:var(--text3)}
+
+button{cursor:pointer;border:none;font-family:'DM Sans',sans-serif;font-weight:600;transition:all .18s}
+.btn-convert{width:100%;background:var(--green);color:#000;padding:.9rem 1.5rem;font-size:.95rem;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;gap:.6rem;letter-spacing:-.01em}
+.btn-convert:hover:not(:disabled){background:#22f270;transform:translateY(-1px);box-shadow:0 4px 20px rgba(31,223,100,.25)}
+.btn-convert:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-secondary{background:transparent;border:1.5px solid var(--border2);color:var(--text2);padding:.65rem 1rem;font-size:.82rem;border-radius:var(--radius-sm)}
+.btn-secondary:hover{border-color:var(--text2);color:var(--text)}
+.btn-download{width:100%;background:var(--green-bg);border:1.5px solid var(--green-dim);color:var(--green);padding:.8rem 1.2rem;font-size:.88rem;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.75rem}
+.btn-download:hover{background:var(--green);color:#000;border-color:var(--green)}
+.btn-retry{background:var(--yellow-bg);border:1.5px solid #7a6010;color:var(--yellow);padding:.65rem 1rem;font-size:.8rem;border-radius:var(--radius-sm);display:flex;align-items:center;gap:.4rem}
+.btn-retry:hover{background:var(--yellow);color:#000;border-color:var(--yellow)}
+
+/* progress */
+#progress-section{display:none}
+.pl-tabs{display:flex;gap:.4rem;margin-bottom:.85rem;flex-wrap:wrap}
+.pl-tab{padding:.3rem .7rem;font-size:.72rem;border-radius:99px;border:1px solid var(--border);background:var(--bg2);color:var(--text3);cursor:pointer;transition:all .18s}
+.pl-tab.active{border-color:var(--green);color:var(--green);background:var(--green-bg)}
+.pl-tab.done{border-color:var(--green-dim);color:var(--green-dim)}
+.pl-panel{display:none}
+.pl-panel.active{display:block}
+.progress-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.5rem}
+.progress-status{font-size:.8rem;color:var(--text2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:1rem}
+.progress-eta{font-size:.72rem;color:var(--text3);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.progress-track-wrap{background:var(--border);border-radius:2px;height:2px;margin-bottom:.35rem;overflow:hidden}
+.progress-track-fill{height:100%;background:var(--green);border-radius:2px;width:0%;transition:width .5s ease}
+.progress-nums{font-size:.68rem;color:var(--text3);font-family:'JetBrains Mono',monospace;text-align:right;margin-bottom:.85rem}
+.log-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.log-inner{max-height:200px;overflow-y:auto;padding:.75rem}
+.log-inner::-webkit-scrollbar{width:3px}
+.log-inner::-webkit-scrollbar-thumb{background:var(--border2)}
+.log-row{display:flex;gap:.5rem;align-items:flex-start;padding:.18rem 0;font-size:.73rem;line-height:1.5;border-top:1px solid transparent}
+.log-row+.log-row{border-top:1px solid var(--border)}
+.log-icon{flex-shrink:0;font-size:.7rem;margin-top:.15em}
+.log-content{flex:1;min-width:0}
+.log-title{color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log-row.found .log-title{color:var(--text)}
+.log-row.miss  .log-title{color:var(--yellow)}
+.log-row.err   .log-title{color:var(--red)}
+.log-badge{font-size:.6rem;font-family:'JetBrains Mono',monospace;padding:.1em .4em;border-radius:3px;margin-left:.4rem;vertical-align:middle}
+.badge-audio{background:#062010;color:var(--green)}
+.badge-video{background:#050d1a;color:var(--blue)}
+.badge-lyrics{background:#0a0a00;color:var(--yellow)}
+
+/* result */
+#result-section{display:none}
+.result-playlist-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.85rem 1rem;margin-bottom:.5rem}
+.rpc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem}
+.rpc-name{font-size:.85rem;font-weight:600;color:var(--text)}
+.rpc-stats{display:flex;gap:.75rem}
+.rpc-stat{font-size:.72rem;font-family:'JetBrains Mono',monospace}
+.rpc-stat.g{color:var(--green)}
+.rpc-stat.y{color:var(--yellow)}
+.notfound-toggle{display:flex;align-items:center;justify-content:space-between;padding:.4rem 0;cursor:pointer;user-select:none;font-size:.75rem;color:var(--yellow);border-top:1px solid var(--border);margin-top:.4rem}
+.notfound-list{display:none;margin-top:.4rem}
+.notfound-list.open{display:block}
+.notfound-item{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text3);padding:.25rem 0;border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.retry-row{display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap}
+.result-info{font-size:.78rem;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-bottom:.75rem}
+.import-steps{display:flex;flex-direction:column;gap:.4rem;margin-top:.75rem}
+.import-step{display:flex;align-items:flex-start;gap:.6rem;font-size:.78rem;color:var(--text2)}
+.import-step-n{flex-shrink:0;width:1.25em;height:1.25em;background:var(--green);color:#000;font-weight:700;font-size:.65rem;border-radius:50%;display:grid;place-items:center;margin-top:.12em}
+
+/* history */
+.history-empty{text-align:center;padding:2rem;color:var(--text3);font-size:.85rem}
+.history-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.85rem 1rem;margin-bottom:.5rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem}
+.hi-left{flex:1;min-width:0}
+.hi-name{font-size:.85rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hi-meta{font-size:.7rem;color:var(--text3);margin-top:.2rem;font-family:'JetBrains Mono',monospace}
+.hi-right{display:flex;gap:.4rem;flex-shrink:0}
+.btn-hi{background:transparent;border:1px solid var(--border);color:var(--text3);padding:.3rem .6rem;font-size:.72rem;border-radius:var(--radius-sm)}
+.btn-hi:hover{border-color:var(--green);color:var(--green)}
+.btn-hi.danger:hover{border-color:var(--red);color:var(--red)}
+.clear-history{background:transparent;border:1px solid var(--border);color:var(--text3);padding:.5rem .85rem;font-size:.75rem;border-radius:var(--radius-sm);width:100%;margin-top:.5rem;cursor:pointer}
+.clear-history:hover{border-color:var(--red);color:var(--red)}
+
+/* speed slider */
+.speed-row{display:flex;align-items:center;gap:.75rem;margin-top:.85rem}
+.speed-label{font-size:.72rem;color:var(--text3);white-space:nowrap;min-width:4rem}
+.speed-slider{flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:var(--border);outline:none;cursor:pointer}
+.speed-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--green);cursor:pointer;box-shadow:0 0 0 3px rgba(31,223,100,.2)}
+.speed-val{font-size:.72rem;font-family:'JetBrains Mono',monospace;color:var(--green);min-width:4rem;text-align:right}
+
+/* update mode */
+.update-section{display:none;margin-top:1rem;background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:var(--radius-sm);padding:.85rem 1rem}
+.update-section.visible{display:block}
+.update-title{font-size:.75rem;font-weight:600;color:var(--blue);margin-bottom:.5rem}
+.update-desc{font-size:.72rem;color:var(--text3);margin-bottom:.75rem;line-height:1.5}
+.update-result{font-size:.75rem;font-family:'JetBrains Mono',monospace;margin-top:.5rem;color:var(--text2)}
+
+/* PWA install banner */
+.pwa-banner{display:none;background:var(--green-bg);border:1px solid var(--green-dim);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-bottom:.75rem;width:100%;max-width:680px;position:relative;z-index:1;align-items:center;gap:.75rem}
+.pwa-banner.show{display:flex}
+.pwa-banner-text{flex:1;font-size:.78rem;color:var(--text2);line-height:1.4}
+.pwa-banner-text strong{color:var(--green)}
+.btn-pwa-install{background:var(--green);color:#000;padding:.5rem .9rem;font-size:.78rem;border-radius:var(--radius-sm);white-space:nowrap;flex-shrink:0}
+.btn-pwa-dismiss{background:transparent;border:none;color:var(--text3);font-size:1rem;cursor:pointer;padding:.25rem;flex-shrink:0}
+
+/* api key */
+.api-key-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem}
+.api-key-row input{flex:1;font-size:.78rem;padding:.6rem .85rem}
+.btn-save-key{background:var(--green-bg);border:1.5px solid var(--green-dim);color:var(--green);padding:.6rem .9rem;font-size:.78rem;border-radius:var(--radius-sm);white-space:nowrap;flex-shrink:0}
+.btn-save-key:hover{background:var(--green);color:#000}
+.api-status{font-size:.72rem;padding:.35rem .7rem;border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;display:inline-flex;align-items:center;gap:.4rem}
+.api-status.api{background:var(--green-bg);border:1px solid var(--green-dim);color:var(--green)}
+.api-status.scrape{background:var(--surface2);border:1px solid var(--border);color:var(--text3)}
+.api-status.warn{background:var(--yellow-bg);border:1px solid #7a6010;color:var(--yellow)}
+.api-help{font-size:.7rem;color:var(--text3);margin-top:.5rem;line-height:1.5}
+.api-help a{color:var(--blue);text-decoration:none}
+.api-help a:hover{text-decoration:underline}
+
+/* toast */
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(4rem);background:var(--red-bg);border:1px solid var(--red);color:var(--red);font-size:.82rem;padding:.7rem 1.2rem;border-radius:var(--radius-sm);max-width:90%;text-align:center;transition:transform .3s ease,opacity .3s ease;opacity:0;z-index:999}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.success{background:var(--green-bg);border-color:var(--green-dim);color:var(--green)}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:16px;height:16px;border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite;display:none}
+.loading .spinner{display:block}
+.loading .btn-icon{display:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.card,.guide,header,.tabs{animation:fadeUp .4s ease both}
+@media(max-width:480px){.mode-grid{grid-template-columns:1fr}.retry-row{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-row">
+    <div class="logo-icon">🎵</div>
+    <div class="logo-text"><span>Spotify</span><span class="arr">→</span><span>NewPipe</span></div>
+  </div>
+  <div class="tagline">Converti le tue playlist Spotify per ascoltarle su NewPipe, senza pubblicità</div>
+  <div class="pill">✓ Zero account richiesti</div>
+</header>
+
+<!-- PWA Install Banner -->
+<div class="pwa-banner" id="pwa-banner">
+  <div class="pwa-banner-text"><strong>📱 Aggiungi alla schermata home</strong><br>Usa l'app dal telefono senza digitare l'IP ogni volta</div>
+  <button class="btn-pwa-install" onclick="installPwa()">Installa</button>
+  <button class="btn-pwa-dismiss" onclick="dismissPwa()" title="Chiudi">✕</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('convert')">🔄 Converti</div>
+  <div class="tab" onclick="switchTab('history')" id="tab-history">📋 Storico</div>
+</div>
+
+<!-- ── Pagina Converti ───────────────────────────────────────────────────────── -->
+<div class="page active" id="page-convert">
+
+  <!-- Guida -->
+  <div class="guide" id="guide">
+    <div class="guide-header" onclick="toggleGuide()">
+      <span class="guide-title">📖 Come funziona</span>
+      <span class="guide-toggle">▼</span>
+    </div>
+    <div class="guide-body">
+      <div class="guide-steps">
+        <div class="guide-step"><div class="guide-step-num">1</div><div class="guide-step-text"><strong>Scegli la modalità:</strong> <em>Nuovo database</em> se è la prima volta, oppure <em>Aggiungi al mio database</em> se hai già playlist salvate in NewPipe.</div></div>
+        <div class="guide-step"><div class="guide-step-num">2</div><div class="guide-step-text"><strong>Incolla uno o più link</strong> di playlist Spotify (devono essere <strong>pubbliche</strong>). Puoi convertire più playlist insieme con il pulsante "Aggiungi playlist".</div></div>
+        <div class="guide-step"><div class="guide-step-num">3</div><div class="guide-step-text"><strong>Attendi la conversione.</strong> L'app cerca ogni canzone su YouTube preferendo versioni audio/lyric video. Usa la durata Spotify per scegliere la versione più fedele.</div></div>
+        <div class="guide-step"><div class="guide-step-num">4</div><div class="guide-step-text"><strong>Scarica il file .zip</strong> e trasferiscilo sul telefono. Su NewPipe: <strong>Impostazioni → Backup e ripristino → Importa database</strong> → tocca <strong>Annulla</strong> quando chiede delle impostazioni.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YouTube API Key -->
+  <div class="card" id="yt-key-card">
+    <div class="section-label">Ricerca YouTube</div>
+    <div id="api-status-wrap" style="margin-bottom:.85rem"></div>
+    <div class="api-key-row">
+      <input type="password" id="yt-api-key" placeholder="YouTube Data API key (opzionale)"/>
+      <button class="btn-save-key" onclick="saveYtKey()">Salva</button>
+    </div>
+    <div class="api-help">
+      Senza key usa scraping gratuito (sempre funziona). Con la key usa l'API ufficiale per risultati più accurati — 100 ricerche/giorno gratis.<br>
+      <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank">→ Ottieni una key gratuita su Google Cloud Console</a>
+    </div>
+  </div>
+
+  <!-- Modalità -->
+  <div class="card">
+    <div class="section-label">Modalità</div>
+    <div class="mode-grid">
+      <div class="mode-card active" id="mode-fresh" onclick="setMode('fresh')">
+        <span class="mode-emoji">✨</span>
+        <div class="mode-name">Nuovo database</div>
+        <div class="mode-desc">Crea un database con solo questa playlist. Ideale per la prima volta.</div>
+      </div>
+      <div class="mode-card" id="mode-merge" onclick="setMode('merge')">
+        <span class="mode-emoji">🔀</span>
+        <div class="mode-name">Aggiungi al mio database</div>
+        <div class="mode-desc">Aggiunge la playlist mantenendo tutte le playlist precedenti.</div>
+      </div>
+    </div>
+    <div id="merge-section">
+      <div style="margin-top:1rem;margin-bottom:.5rem"><div class="section-label">Il tuo database NewPipe</div></div>
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="db-file" accept=".zip" onchange="uploadDb(this.files[0])"/>
+        <div class="upload-zone-icon">📁</div>
+        <div class="upload-zone-text"><strong>Clicca o trascina</strong> il file .zip esportato da NewPipe</div>
+      </div>
+      <div class="upload-result" id="upload-result"></div>
+      <div class="upload-hint"><span>ℹ</span><span>Esporta da NewPipe: <strong>Impostazioni → Backup e ripristino → Esporta database</strong></span></div>
+    </div>
+  </div>
+
+  <!-- Playlist URLs -->
+  <div class="card">
+    <div class="section-label">Playlist Spotify</div>
+    <div class="playlist-inputs" id="playlist-inputs">
+      <div class="playlist-row" data-idx="0">
+        <input type="text" placeholder="https://open.spotify.com/playlist/..." />
+      </div>
+    </div>
+    <button class="btn-add-url" onclick="addPlaylistRow()">+ Aggiungi altra playlist</button>
+    <!-- Aggiornamento playlist -->
+    <div class="update-section" id="update-section">
+      <div class="update-title">🔄 Modalità aggiornamento</div>
+      <div class="update-desc">Carica il tuo database NewPipe e il link della playlist già convertita: l'app aggiungerà <strong>solo le canzoni nuove</strong> che non hai ancora.</div>
+      <div id="update-result" class="update-result"></div>
+    </div>
+
+    <!-- Velocità conversione -->
+    <div class="speed-row">
+      <span class="speed-label">Velocità</span>
+      <input type="range" class="speed-slider" id="speed-slider" min="0" max="2" step="1" value="1" oninput="updateSpeedLabel()"/>
+      <span class="speed-val" id="speed-val">Normale</span>
+    </div>
+
+    <button class="btn-convert" id="convert-btn" onclick="startConversion()" style="margin-top:.85rem">
+      <div class="spinner"></div>
+      <span class="btn-icon">▶</span>
+      <span id="btn-text">Avvia conversione</span>
+    </button>
+  </div>
+
+  <!-- Progresso -->
+  <div class="card" id="progress-section">
+    <div class="section-label">Avanzamento</div>
+    <div class="pl-tabs" id="pl-tabs"></div>
+    <div id="pl-panels"></div>
+  </div>
+
+  <!-- Risultato -->
+  <div class="card" id="result-section">
+    <div class="section-label">Risultato</div>
+    <div class="result-info" id="result-info"></div>
+    <div id="result-playlists"></div>
+    <button class="btn-download" onclick="downloadZip()">⬇ Scarica database NewPipe (.zip)</button>
+    <div style="margin-top:1rem">
+      <div class="section-label">Come importare su NewPipe</div>
+      <div class="import-steps">
+        <div class="import-step"><div class="import-step-n">1</div><span>Trasferisci il file <strong>.zip</strong> sul telefono (WhatsApp, cavo, Drive…)</span></div>
+        <div class="import-step"><div class="import-step-n">2</div><span>NewPipe → <strong>Impostazioni</strong> → <strong>Backup e ripristino</strong></span></div>
+        <div class="import-step"><div class="import-step-n">3</div><span>Tocca <strong>Importa database</strong> → seleziona il file <strong>.zip</strong></span></div>
+        <div class="import-step"><div class="import-step-n">4</div><span>Quando chiede delle impostazioni → <strong>Annulla</strong></span></div>
+        <div class="import-step"><div class="import-step-n">5</div><span>La playlist appare in <strong>Libreria → Playlist</strong> 🎉</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Pagina Storico ─────────────────────────────────────────────────────────── -->
+<div class="page" id="page-history">
+  <div class="card">
+    <div class="section-label">Conversioni recenti</div>
+    <div id="history-list"></div>
+    <button class="clear-history" onclick="clearHistory()">🗑 Cancella storico</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let mode           = localStorage.getItem('npMode') || 'fresh';
+let uploadedDbPath = null;
+let zipBase64Data  = null;
+let allNotFound    = {};   // { playlistIndex: [tracks] }
+let convStartTimes = {};   // { playlistIndex: timestamp }
+let totalByPl      = {};   // { playlistIndex: total }
+let doneByPl       = {};   // { playlistIndex: done }
+let activeTab      = 'convert';
+let currentPlaylists = [];  // risultati finali
+
+// ── PWA ───────────────────────────────────────────────────────────────────────
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (!localStorage.getItem('pwaDismissed')) {
+    document.getElementById('pwa-banner').classList.add('show');
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('pwa-banner').classList.remove('show');
+  showToast('App installata! 🎉', 'success');
+});
+
+async function installPwa() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') document.getElementById('pwa-banner').classList.remove('show');
+  deferredInstallPrompt = null;
+}
+
+function dismissPwa() {
+  document.getElementById('pwa-banner').classList.remove('show');
+  localStorage.setItem('pwaDismissed', '1');
+}
+
+// Registra service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// ── Notifiche desktop ─────────────────────────────────────────────────────────
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission !== 'denied') {
+    const perm = await Notification.requestPermission();
+    return perm === 'granted';
+  }
+  return false;
+}
+
+function sendNotification(title, body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  new Notification(title, {
+    body,
+    icon:  '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+  });
+}
+
+// ── Velocità ──────────────────────────────────────────────────────────────────
+const SPEED_LABELS = ['Sicura', 'Normale', 'Veloce'];
+const SPEED_KEYS   = ['safe', 'normal', 'fast'];
+
+function updateSpeedLabel() {
+  const v = parseInt(document.getElementById('speed-slider').value);
+  document.getElementById('speed-val').textContent = SPEED_LABELS[v];
+}
+
+function getSpeed() {
+  return SPEED_KEYS[parseInt(document.getElementById('speed-slider').value)];
+}
+
+// ── Aggiornamento playlist ────────────────────────────────────────────────────
+let updateExistingTracks = null; // Set di titoli YouTube già presenti
+
+async function checkForUpdates() {
+  if (mode !== 'merge' || !uploadedDbPath) return;
+  const urls = getUrls();
+  if (urls.length !== 1) return; // funziona solo con 1 playlist
+
+  const urlInput = urls[0];
+  if (!urlInput.includes('spotify.com/playlist/')) return;
+
+  const updateSection = document.getElementById('update-section');
+  const updateResult  = document.getElementById('update-result');
+  updateSection.classList.add('visible');
+  updateResult.textContent = '⏳ Cerco brani già presenti nel database...';
+
+  try {
+    // Recupera prima il nome dalla playlist Spotify
+    const res = await fetch('/api/get-playlist-tracks', {
+      method: 'POST',
+      body: (() => {
+        const f = new FormData();
+        // Nota: il file è già stato caricato, ma serve una nuova call — usiamo il file input
+        const fileInput = document.getElementById('db-file');
+        if (fileInput.files[0]) f.append('dbzip', fileInput.files[0]);
+        f.append('playlistName', localStorage.getItem('lastPlaylistName') || '');
+        return f;
+      })()
+    });
+    const data = await res.json();
+    if (data.found && data.tracks.length > 0) {
+      updateExistingTracks = new Set(data.tracks.map(t => t.toLowerCase()));
+      updateResult.textContent = `✓ Trovata playlist con ${data.tracks.length} brani — aggiungerò solo i nuovi`;
+      updateResult.style.color = 'var(--green)';
+    } else {
+      updateExistingTracks = null;
+      updateResult.textContent = 'ℹ Playlist non trovata nel database — verrà creata da zero';
+      updateResult.style.color = 'var(--text3)';
+    }
+  } catch (e) {
+    updateExistingTracks = null;
+    updateSection.classList.remove('visible');
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+(function init() {
+  setMode(mode, false);
+  if (!localStorage.getItem('guideSeen')) document.getElementById('guide').classList.add('open');
+  renderHistory();
+  updateSpeedLabel();
+  const savedKey = localStorage.getItem('ytApiKey');
+  if (savedKey) {
+    document.getElementById('yt-api-key').value = savedKey;
+    saveYtKey(true);
+  } else {
+    refreshApiStatus();
+  }
+  // Chiedi permesso notifiche al primo avvio
+  if (!localStorage.getItem('notifAsked')) {
+    setTimeout(() => {
+      requestNotificationPermission();
+      localStorage.setItem('notifAsked', '1');
+    }, 3000);
+  }
+})();
+
+// ── YouTube API Key ────────────────────────────────────────────────────────────
+async function saveYtKey(silent = false) {
+  const key = document.getElementById('yt-api-key').value.trim();
+  try {
+    await fetch('/api/set-yt-key', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ key })
+    });
+    if (key) localStorage.setItem('ytApiKey', key);
+    else localStorage.removeItem('ytApiKey');
+    if (!silent) showToast(key ? 'API key salvata!' : 'API key rimossa', 'success');
+    refreshApiStatus();
+  } catch (e) { if (!silent) showToast('Errore nel salvare la key'); }
+}
+
+async function refreshApiStatus() {
+  try {
+    const res  = await fetch('/api/yt-status');
+    const data = await res.json();
+    const wrap = document.getElementById('api-status-wrap');
+    if (data.exhausted) {
+      wrap.innerHTML = '<span class="api-status warn">⚠ Quota API esaurita oggi — uso scraping automatico</span>';
+    } else if (data.hasKey) {
+      wrap.innerHTML = '<span class="api-status api">✓ YouTube Data API attiva — ricerca di alta qualità</span>';
+    } else {
+      wrap.innerHTML = '<span class="api-status scrape">◎ Modalità scraping — funziona sempre, qualità standard</span>';
+    }
+  } catch {}
+}
+
+// ── Tab navigation ─────────────────────────────────────────────────────────────
+function switchTab(t) {
+  activeTab = t;
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    el.classList.toggle('active', (i === 0 && t === 'convert') || (i === 1 && t === 'history'));
+  });
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + t).classList.add('active');
+  if (t === 'history') renderHistory();
+}
+
+// ── Guide ──────────────────────────────────────────────────────────────────────
+function toggleGuide() {
+  document.getElementById('guide').classList.toggle('open');
+  localStorage.setItem('guideSeen', '1');
+}
+
+// ── Mode ───────────────────────────────────────────────────────────────────────
+function setMode(m, save = true) {
+  mode = m;
+  if (save) localStorage.setItem('npMode', m);
+  document.getElementById('mode-fresh').classList.toggle('active', m === 'fresh');
+  document.getElementById('mode-merge').classList.toggle('active', m === 'merge');
+  document.getElementById('merge-section').style.display = m === 'merge' ? 'block' : 'none';
+}
+
+// ── Upload DB ──────────────────────────────────────────────────────────────────
+const zone = document.getElementById('upload-zone');
+zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) { document.getElementById('db-file').files = e.dataTransfer.files; uploadDb(f); }
+});
+
+// Trigger update check when relevant inputs change
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('playlist-inputs').addEventListener('input', () => {
+    if (mode === 'merge' && uploadedDbPath) checkForUpdates();
+  });
+});
+
+async function uploadDb(file) {
+  if (!file) return;
+  const el = document.getElementById('upload-result');
+  el.className = 'upload-result'; el.textContent = '⏳ Carico…'; el.style.display = 'block';
+  const form = new FormData(); form.append('dbzip', file);
+  try {
+    const res = await fetch('/api/upload-db', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.ok) {
+      uploadedDbPath = data.tmpPath;
+      el.className = 'upload-result ok'; el.textContent = '✓ ' + file.name;
+      checkForUpdates();
+    } else throw new Error(data.error);
+  } catch (e) {
+    uploadedDbPath = null; el.className = 'upload-result err'; el.textContent = '✗ ' + e.message;
+  }
+}
+
+// ── Multi-playlist rows ────────────────────────────────────────────────────────
+function addPlaylistRow() {
+  const container = document.getElementById('playlist-inputs');
+  const idx = container.children.length;
+  const row = document.createElement('div');
+  row.className = 'playlist-row'; row.dataset.idx = idx;
+  row.innerHTML = `<input type="text" placeholder="https://open.spotify.com/playlist/..."/><button class="btn-remove-row" onclick="removeRow(this)" title="Rimuovi">✕</button>`;
+  container.appendChild(row);
+}
+
+function removeRow(btn) {
+  const row = btn.closest('.playlist-row');
+  if (document.getElementById('playlist-inputs').children.length > 1) row.remove();
+}
+
+function getUrls() {
+  return Array.from(document.querySelectorAll('.playlist-row input'))
+    .map(i => i.value.trim()).filter(Boolean);
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type = 'error') {
+  const t = document.getElementById('toast');
+  t.textContent = (type === 'error' ? '⚠ ' : '✓ ') + msg;
+  t.className = 'toast show' + (type === 'success' ? ' success' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 5000);
+}
+
+// ── Progress helpers ───────────────────────────────────────────────────────────
+function getPanel(idx) { return document.getElementById('pl-panel-' + idx); }
+
+function setProgress(idx, current, total) {
+  const panel = getPanel(idx); if (!panel) return;
+  const pct = total > 0 ? (current / total) * 100 : 0;
+  panel.querySelector('.progress-track-fill').style.width = pct + '%';
+  panel.querySelector('.progress-nums').textContent = total > 0 ? `${current} / ${total}` : '';
+}
+
+function updateEta(idx, current, total) {
+  const panel = getPanel(idx); if (!panel) return;
+  const start = convStartTimes[idx];
+  if (!start || current < 2) { panel.querySelector('.progress-eta').textContent = ''; return; }
+  const elapsed = (Date.now() - start) / 1000;
+  const remain  = (total - current) / (current / elapsed);
+  const mins    = Math.floor(remain / 60), secs = Math.floor(remain % 60);
+  panel.querySelector('.progress-eta').textContent = mins > 0 ? `~${mins}m ${secs}s` : `~${secs}s`;
+}
+
+function setStatus(idx, msg) {
+  const panel = getPanel(idx); if (!panel) return;
+  panel.querySelector('.progress-status').textContent = msg;
+}
+
+function addLog(idx, icon, title, cls, badge) {
+  const panel = getPanel(idx); if (!panel) return;
+  const log = panel.querySelector('.log-inner');
+  const row = document.createElement('div');
+  row.className = `log-row ${cls}`;
+  const badgeHtml = badge ? `<span class="log-badge badge-${badge}">${badge}</span>` : '';
+  row.innerHTML = `<span class="log-icon">${icon}</span><div class="log-content"><span class="log-title">${esc(title)}</span>${badgeHtml}</div>`;
+  log.appendChild(row);
+  log.scrollTop = log.scrollHeight;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function detectBadge(title) {
+  const t = title.toLowerCase();
+  if (t.includes('official audio') || (t.includes('audio') && !t.includes('video'))) return 'audio';
+  if (t.includes('lyric') || t.includes('lyrics')) return 'lyrics';
+  if (t.includes('official video') || t.includes('official music video')) return 'video';
+  return null;
+}
+
+// ── Setup progress panels ──────────────────────────────────────────────────────
+function setupProgressPanels(n, names) {
+  const tabsEl   = document.getElementById('pl-tabs');
+  const panelsEl = document.getElementById('pl-panels');
+  tabsEl.innerHTML = ''; panelsEl.innerHTML = '';
+
+  for (let i = 0; i < n; i++) {
+    const label = names[i] || `Playlist ${i+1}`;
+    const tab = document.createElement('div');
+    tab.className = 'pl-tab' + (i === 0 ? ' active' : '');
+    tab.id = `pl-tab-${i}`;
+    tab.textContent = n > 1 ? `${i+1}. ${label.slice(0,18)}` : label.slice(0, 24);
+    tab.onclick = () => switchPlTab(i);
+    tabsEl.appendChild(tab);
+
+    const panel = document.createElement('div');
+    panel.className = 'pl-panel' + (i === 0 ? ' active' : '');
+    panel.id = `pl-panel-${i}`;
+    panel.innerHTML = `
+      <div class="progress-header">
+        <div class="progress-status">In attesa…</div>
+        <div class="progress-eta"></div>
+      </div>
+      <div class="progress-track-wrap"><div class="progress-track-fill"></div></div>
+      <div class="progress-nums"></div>
+      <div class="log-wrap"><div class="log-inner"></div></div>`;
+    panelsEl.appendChild(panel);
+  }
+}
+
+function switchPlTab(i) {
+  document.querySelectorAll('.pl-tab').forEach((t,j) => t.classList.toggle('active', i === j));
+  document.querySelectorAll('.pl-panel').forEach((p,j) => p.classList.toggle('active', i === j));
+}
+
+// ── Loading ────────────────────────────────────────────────────────────────────
+function setLoading(on) {
+  const btn = document.getElementById('convert-btn');
+  btn.disabled = on; btn.classList.toggle('loading', on);
+  document.getElementById('btn-text').textContent = on ? 'Conversione in corso…' : 'Avvia conversione';
+}
+
+// ── Start conversion ───────────────────────────────────────────────────────────
+async function startConversion(retryData) {
+  const urls = retryData ? [document.querySelectorAll('.playlist-row input')[0]?.value || ''] : getUrls();
+
+  if (!retryData) {
+    if (!urls.length) return showToast('Inserisci almeno un link Spotify.');
+    for (const u of urls) {
+      if (!u.includes('spotify.com/playlist/')) return showToast('Link non valido: ' + u);
+    }
+    if (mode === 'merge' && !uploadedDbPath) return showToast('Carica prima il tuo database NewPipe.');
+  }
+
+  setLoading(true);
+  zipBase64Data = null; allNotFound = {}; convStartTimes = {}; totalByPl = {}; doneByPl = {};
+  currentPlaylists = [];
+
+  document.getElementById('progress-section').style.display = 'block';
+  document.getElementById('result-section').style.display = 'none';
+
+  const n = retryData ? 1 : urls.length;
+  setupProgressPanels(n, urls.map(() => '…'));
+  for (let i = 0; i < n; i++) { convStartTimes[i] = Date.now(); doneByPl[i] = 0; }
+
+  try {
+    const body = retryData
+      ? { playlistUrls: urls, retryList: retryData, existingDbPath: mode === 'merge' ? uploadedDbPath : null, speed: getSpeed() }
+      : { playlistUrls: urls, existingDbPath: mode === 'merge' ? uploadedDbPath : null, speed: getSpeed(), updateMode: !!updateExistingTracks };
+
+    const res = await fetch('/api/convert', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const reader = res.body.getReader(); const decoder = new TextDecoder(); let buf = '';
+
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try { handleEvent(JSON.parse(line.slice(6))); } catch {}
+      }
+    }
+  } catch (e) { showToast('Errore di rete: ' + e.message); }
+  finally { setLoading(false); }
+}
+
+function handleEvent(evt) {
+  const pi = evt.playlistIndex || 0;
+  switch (evt.type) {
+    case 'status':
+      setStatus(0, evt.message);
+      break;
+    case 'start':
+      totalByPl[pi] = evt.total;
+      convStartTimes[pi] = Date.now();
+      // Aggiorna etichetta tab
+      const tabEl = document.getElementById(`pl-tab-${pi}`);
+      if (tabEl) tabEl.textContent = evt.totalPlaylists > 1 ? `${pi+1}. ${evt.name.slice(0,16)}` : evt.name.slice(0,24);
+      setStatus(pi, `"${evt.name}" — ${evt.total} brani`);
+      setProgress(pi, 0, evt.total);
+      // Attiva il tab di questa playlist
+      switchPlTab(pi);
+      break;
+    case 'searching':
+      setStatus(pi, `[${evt.current}/${evt.total}] ${evt.track}`);
+      doneByPl[pi] = evt.current - 1;
+      setProgress(pi, evt.current - 1, evt.total);
+      updateEta(pi, evt.current - 1, evt.total);
+      break;
+    case 'found': {
+      doneByPl[pi]++;
+      setProgress(pi, doneByPl[pi], totalByPl[pi]);
+      updateEta(pi, doneByPl[pi], totalByPl[pi]);
+      // Mostra badge sorgente se API
+      const srcBadge = evt.source === 'api' ? 'api' : null;
+      addLog(pi, '✓', evt.title, 'found', srcBadge || detectBadge(evt.title));
+      break;
+    }
+    case 'notFound':
+      doneByPl[pi]++;
+      setProgress(pi, doneByPl[pi], totalByPl[pi]);
+      updateEta(pi, doneByPl[pi], totalByPl[pi]);
+      if (!allNotFound[pi]) allNotFound[pi] = [];
+      allNotFound[pi].push(evt.track);
+      addLog(pi, '✗', evt.track, 'miss', null);
+      break;
+    case 'playlistDone':
+      setStatus(pi, `✅ ${evt.name} — ${evt.found}/${evt.total} trovate`);
+      setProgress(pi, evt.total, evt.total);
+      const doneTab = document.getElementById(`pl-tab-${pi}`);
+      if (doneTab) { doneTab.classList.remove('active'); doneTab.classList.add('done'); }
+      break;
+    case 'done':
+      zipBase64Data = evt.zipBase64;
+      currentPlaylists = evt.playlists;
+      showResult(evt);
+      setLoading(false);
+      saveToHistory(evt.playlists);
+      updateExistingTracks = null;
+      // Notifica desktop
+      const totalFound = evt.playlists.reduce((s,p) => s + p.found, 0);
+      const totalAll   = evt.playlists.reduce((s,p) => s + p.total, 0);
+      sendNotification('✅ Conversione completata!',
+        `${totalFound}/${totalAll} brani trovati — scarica il file ZIP`);
+      break;
+    case 'error':
+      showToast(evt.message);
+      addLog(pi, '!', evt.message, 'err', null);
+      setLoading(false);
+      break;
+  }
+}
+
+function showResult(evt) {
+  const infoEl = document.getElementById('result-info');
+  infoEl.textContent = evt.merged
+    ? `🔀 ${evt.playlists.length} playlist aggiunta/e al tuo database. Le playlist precedenti sono al sicuro.`
+    : `✨ Nuovo database creato con ${evt.playlists.length} playlist.`;
+
+  const container = document.getElementById('result-playlists');
+  container.innerHTML = '';
+
+  evt.playlists.forEach((pl, i) => {
+    const nf = pl.notFound || [];
+    const card = document.createElement('div');
+    card.className = 'result-playlist-card';
+    card.innerHTML = `
+      <div class="rpc-header">
+        <div class="rpc-name">${esc(pl.name)}</div>
+        <div class="rpc-stats">
+          <span class="rpc-stat g">✓ ${pl.found}</span>
+          ${nf.length > 0 ? `<span class="rpc-stat y">✗ ${nf.length}</span>` : ''}
+          <span class="rpc-stat" style="color:var(--text3)">${pl.total} totali</span>
+        </div>
+      </div>
+      ${nf.length > 0 ? `
+        <div class="notfound-toggle" onclick="toggleNF(this)">
+          <span>⚠ ${nf.length} non trovate</span><span>▼</span>
+        </div>
+        <div class="notfound-list">
+          ${nf.map(t => `<div class="notfound-item">✗ ${esc(t)}</div>`).join('')}
+        </div>
+        <div class="retry-row">
+          <button class="btn-retry" onclick="retryFailed(${i})">🔄 Riprova</button>
+          <button class="btn-secondary" onclick="copyNF(${i})">📋 Copia lista</button>
+        </div>
+      ` : ''}
+    `;
+    container.appendChild(card);
+  });
+
+  document.getElementById('result-section').style.display = 'block';
+  document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+  uploadedDbPath = null;
+}
+
+function toggleNF(toggle) {
+  const list = toggle.nextElementSibling;
+  list.classList.toggle('open');
+  toggle.querySelector('span:last-child').textContent = list.classList.contains('open') ? '▲' : '▼';
+}
+
+function retryFailed(i) {
+  const nf = currentPlaylists[i]?.notFound;
+  if (!nf?.length) return;
+  document.getElementById('log')?.remove();
+  startConversion(nf);
+}
+
+function copyNF(i) {
+  const nf = currentPlaylists[i]?.notFound;
+  if (!nf?.length) return;
+  navigator.clipboard.writeText(nf.join('\n')).then(() => showToast('Lista copiata!', 'success'));
+}
+
+// ── Download ───────────────────────────────────────────────────────────────────
+function downloadZip() {
+  if (!zipBase64Data) return;
+  const binary = atob(zipBase64Data), bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: 'application/zip' });
+  const a = document.createElement('a');
+  const name = currentPlaylists.length === 1
+    ? currentPlaylists[0].name
+    : `${currentPlaylists.length}_playlist`;
+  a.href = URL.createObjectURL(blob);
+  a.download = `NewPipe_${name.replace(/[^a-z0-9_\-]/gi,'_')}.zip`;
+  a.click();
+}
+
+// ── History ────────────────────────────────────────────────────────────────────
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('npHistory') || '[]'); } catch { return []; }
+}
+
+function saveToHistory(playlists) {
+  const history = getHistory();
+  for (const pl of playlists) {
+    history.unshift({
+      id:     Date.now() + Math.random(),
+      name:   pl.name,
+      found:  pl.found,
+      total:  pl.total,
+      date:   new Date().toLocaleDateString('it-IT', { day:'2-digit', month:'short', year:'numeric' }),
+    });
+  }
+  // Mantieni max 50 entries
+  localStorage.setItem('npHistory', JSON.stringify(history.slice(0, 50)));
+}
+
+function renderHistory() {
+  const history = getHistory();
+  const el = document.getElementById('history-list');
+  if (!el) return;
+
+  if (!history.length) {
+    el.innerHTML = '<div class="history-empty">Nessuna conversione ancora.<br>Converti la tua prima playlist! 🎵</div>';
+    return;
+  }
+
+  el.innerHTML = history.map(h => `
+    <div class="history-item">
+      <div class="hi-left">
+        <div class="hi-name">${esc(h.name)}</div>
+        <div class="hi-meta">${h.date} · ${h.found}/${h.total} brani trovati</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearHistory() {
+  if (confirm('Cancellare tutto lo storico?')) {
+    localStorage.removeItem('npHistory');
+    renderHistory();
+  }
+}
+</script>
+</body>
+</html>
